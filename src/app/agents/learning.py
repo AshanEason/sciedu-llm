@@ -119,8 +119,25 @@ async def say(
         if isinstance(compiled, str):
             system = {"role": "system", "content": compiled}
         else:
-            messages = [*compiled, *messages]
-            system = None
+            # Keep the preset's trusted role prompt before our final workflow
+            # policy, just as for the teacher. A chat prompt may itself contain
+            # system messages; do not append those after the policy/context.
+            system = {
+                "role": "system",
+                "content": "\n\n".join(
+                    str(message.get("content", ""))
+                    for message in compiled
+                    if message.get("role") in {"system", "developer"}
+                ),
+            }
+            messages = [
+                *[
+                    message
+                    for message in compiled
+                    if message.get("role") not in {"system", "developer"}
+                ],
+                *messages,
+            ]
     else:
         raise ValueError("argumentation requires a configured peer prompt")
     tools = [
